@@ -3,10 +3,10 @@
 namespace App\Controller;
 
 use App\Entity\Author;
+use App\Entity\Book;
 use App\Repository\BookRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -35,7 +35,21 @@ class BookController extends AbstractController
      */
     public function search(Request $request)
     {
-        return $this->json([]);
+        $pageSize = 100;
+        $page = max(1, (int) $request->get('page'));
+
+        $books = $this->bookRepository->findByNamePart($request->query->get('query', ''), $page, $pageSize);
+        $booksArray = array_map(
+            fn (Book $book) => $this->getBookResponseItem($book),
+            $books->getIterator()->getArrayCopy()
+        );
+
+        return $this->json($booksArray, 200, [
+            'Total-Items-Count' => $books->count(),
+            'Items-Count' => count($booksArray),
+            'Page' => $page,
+            'Total-Pages' => (int) ceil($books->count()/$pageSize),
+        ]);
     }
 
     /**
@@ -49,7 +63,12 @@ class BookController extends AbstractController
             throw $this->createNotFoundException();
         }
 
-        return $this->json([
+        return $this->json($this->getBookResponseItem($book));
+    }
+
+    protected function getBookResponseItem(Book $book)
+    {
+        return [
             'Id' => $book->getId(),
             'Name' => $this->translator->trans($book->getName(), [], 'books'),
             'Author' => $book->getAuthors()->map(
@@ -58,6 +77,6 @@ class BookController extends AbstractController
                     'Name' => $author->getName()
                 ]
             )->toArray(),
-        ]);
+        ];
     }
 }
