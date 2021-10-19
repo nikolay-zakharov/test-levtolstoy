@@ -19,6 +19,16 @@ class AuthorRepository extends ServiceEntityRepository
         parent::__construct($registry, Author::class);
     }
 
+    public function findByIdIn($ids)
+    {
+        return $this->createQueryBuilder('a')
+            ->andWhere('a.id in (:ids)')
+            ->setParameter('ids', $ids)
+            ->orderBy('a.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
     // /**
     //  * @return Author[] Returns an array of Author objects
     //  */

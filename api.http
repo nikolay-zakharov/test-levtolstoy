@@ -1,0 +1,23 @@
+### Book EN
+GET {{ host }}/en/book/1
+
+### Book RU
+GET {{ host }}/ru/book/1
+
+### Book search ALL
+GET {{ host }}/book/search?page=1&query=ми
+
+### Book search NONE
+GET {{ host }}/book/search?page=1&query=неттаких
+
+### Author create
+POST {{ host }}/author/create
+Content-Type: application/json
+
+{"name": "Чак Паланик"}
+
+### Book create
+POST {{ host }}/book/create
+Content-Type: application/json
+
+{"name": "Биография Бастера Кейси", "authors": [10001]}

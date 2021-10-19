@@ -50,4 +50,9 @@ class Book
     {
         return $this->authors;
     }
+
+    public function setAuthors(array $authors)
+    {
+        $this->authors = new ArrayCollection($authors);
+    }
 }

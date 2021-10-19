@@ -20,7 +20,7 @@ class BookRepository extends ServiceEntityRepository
         parent::__construct($registry, Book::class);
     }
 
-    public function findByNamePart(string $namePart, int $page, int $pageSize)
+    public function findByNamePartPaginated(string $namePart, int $page, int $pageSize): Paginator
     {
         $query = $this->createQueryBuilder('b')
             ->andWhere('b.name like :value')

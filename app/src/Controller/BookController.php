@@ -4,11 +4,14 @@ namespace App\Controller;
 
 use App\Entity\Author;
 use App\Entity\Book;
+use App\Repository\AuthorRepository;
 use App\Repository\BookRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Contracts\Translation\TranslatorInterface;
+use Throwable;
 
 class BookController extends AbstractController
 {
@@ -16,29 +19,61 @@ class BookController extends AbstractController
 
     protected BookRepository $bookRepository;
 
-    public function __construct(TranslatorInterface $translator, BookRepository $bookRepository)
+    protected AuthorRepository $authorRepository;
+
+    protected EntityManagerInterface $entityManager;
+
+    public function __construct(
+        TranslatorInterface $translator,
+        BookRepository $bookRepository,
+        AuthorRepository $authorRepository,
+        EntityManagerInterface $entityManager
+    )
     {
         $this->translator = $translator;
         $this->bookRepository = $bookRepository;
+        $this->authorRepository = $authorRepository;
+        $this->entityManager = $entityManager;
     }
 
     /**
-     * @Route("/book/create", name="book_create")
+     * @Route("/book/create", name="book_create", methods={"POST"})
      */
-    public function create()
+    public function create(Request $request)
     {
-        return $this->json([]);
+        $requestData = $request->toArray();
+
+        if (empty($requestData['name']) || empty($requestData['authors'])) {
+            return $this->json(['error' => true, 'message' => 'Name and Authors are required'], 422);
+        }
+
+        try {
+            $book = new Book();
+            $book->setName($requestData['name']);
+            $this->entityManager->persist($book);
+            $this->entityManager->flush();
+
+            $authors = $this->authorRepository->findByIdIn($requestData['authors']);
+            $book->setAuthors($authors);
+            $this->entityManager->flush();
+
+            return $this->json(['success' => true]);
+        } catch (Throwable $t) {
+            return $this->json(['error' => true, 'message' => $t->getMessage(), 'trace' => $t->getTraceAsString()], 422);
+        }
     }
 
     /**
-     * @Route("/book/search", name="book_search")
+     * @Route("/book/search", name="book_search", methods={"GET"})
      */
     public function search(Request $request)
     {
         $pageSize = 100;
         $page = max(1, (int) $request->get('page'));
+        $query = $request->query->get('query', '');
 
-        $books = $this->bookRepository->findByNamePart($request->query->get('query', ''), $page, $pageSize);
+        $books = $this->bookRepository->findByNamePartPaginated($query, $page, $pageSize);
+
         $booksArray = array_map(
             fn (Book $book) => $this->getBookResponseItem($book),
             $books->getIterator()->getArrayCopy()
@@ -53,7 +88,7 @@ class BookController extends AbstractController
     }
 
     /**
-     * @Route("/{_locale<en|ru>}/book/{bookId}", name="book_item")
+     * @Route("/{_locale<en|ru>}/book/{bookId}", name="book_item", methods={"GET"})
      */
     public function item(int $bookId)
     {
